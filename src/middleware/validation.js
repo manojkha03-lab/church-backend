@@ -10,12 +10,12 @@ exports.handleValidationErrors = (req, res, next) => {
 
 exports.validateRegister = [
   body('name').isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
-  body('email').isEmail().withMessage('Must be a valid email'),
+  body('mobile').matches(/^[0-9]{10}$/).withMessage('Mobile must be a valid 10-digit number'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ];
 
 exports.validateLogin = [
-  body('email').isEmail().withMessage('Must be a valid email'),
+  body('name').notEmpty().withMessage('Name is required'),
   body('password').notEmpty().withMessage('Password is required'),
 ];
 

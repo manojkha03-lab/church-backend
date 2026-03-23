@@ -16,9 +16,10 @@ exports.getProfile = async (req, res) => {
 // PUT /api/profile/me — update own profile (protected, member)
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, bio, profileImage } = req.body;
+    const { name, email, phone, bio, profileImage } = req.body;
     const updates = {};
     if (name !== undefined) updates.name = name;
+    if (email !== undefined) updates.email = email;
     if (phone !== undefined) updates.phone = phone;
     if (bio !== undefined) updates.bio = bio;
     if (profileImage !== undefined) updates.profileImage = profileImage;
