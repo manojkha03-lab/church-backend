@@ -112,8 +112,8 @@ app.use(notFoundHandler);
 // global error handler (must be last)
 app.use(errorHandler);
 
-// port
-const PORT = process.env.PORT || 5000;
+// port — Render sets PORT env var; default to 10000 for production
+const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, '0.0.0.0', () => {
   logger.info(`Server running on port ${PORT}`);
