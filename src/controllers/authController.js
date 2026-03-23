@@ -149,8 +149,8 @@ exports.getMe = async (req, res) => {
   }
 };
 
-// ================= GOOGLE LOGIN (Firebase) =================
-exports.googleLogin = async (req, res) => {
+// ================= FIREBASE LOGIN (Google / Email / Phone — unified) =================
+exports.firebaseLogin = async (req, res) => {
   try {
     const { idToken } = req.body;
     if (!idToken) {
@@ -158,18 +158,28 @@ exports.googleLogin = async (req, res) => {
     }
 
     const decoded = await verifyFirebaseToken(idToken);
-    const { email, name: displayName, picture } = decoded;
+    const { uid, email, name: displayName, phone_number, picture, firebase } = decoded;
+    const signInProvider = firebase?.sign_in_provider || "unknown";
 
-    if (!email) {
-      return res.status(400).json({ message: "Google account must have an email address." });
+    // Determine provider tag
+    const providerMap = { "google.com": "google", "phone": "phone", "password": "email" };
+    const provider = providerMap[signInProvider] || "email";
+
+    // Try to find existing user by Firebase UID first
+    let user = await User.findOne({ firebaseUid: uid });
+
+    // Fallback: find by email or phone
+    if (!user && email) {
+      user = await User.findOne({ email });
+    }
+    if (!user && phone_number) {
+      const mobile = phone_number.replace(/^\+91/, "");
+      user = await User.findOne({ mobile });
     }
 
-    // Check if Google user already exists by email
-    let user = await User.findOne({ email, provider: "google" });
-
     if (!user) {
-      // Generate a unique name
-      let userName = displayName || email.split("@")[0];
+      // Create new user
+      let userName = displayName || (email ? email.split("@")[0] : `User_${uid.slice(0, 6)}`);
       const nameExists = await User.findOne({ name: userName });
       if (nameExists) {
         userName = `${userName}_${Date.now().toString(36).slice(-4)}`;
@@ -177,8 +187,10 @@ exports.googleLogin = async (req, res) => {
 
       user = new User({
         name: userName,
-        email,
-        provider: "google",
+        email: email || "",
+        mobile: phone_number ? phone_number.replace(/^\+91/, "") : null,
+        firebaseUid: uid,
+        provider,
         profileImage: picture || "",
         isVerified: true,
         status: "pending",
@@ -192,7 +204,15 @@ exports.googleLogin = async (req, res) => {
       });
     }
 
-    // Existing user — check approval status
+    // Link Firebase UID if not already linked
+    if (!user.firebaseUid) {
+      user.firebaseUid = uid;
+      if (picture && !user.profileImage) user.profileImage = picture;
+      if (email && !user.email) user.email = email;
+      await user.save();
+    }
+
+    // Check approval status
     if (user.status === "pending") {
       return res.status(403).json({
         message: "Your account is pending approval by an administrator.",
@@ -224,10 +244,10 @@ exports.googleLogin = async (req, res) => {
       user: { id: user._id, name: user.name, email: user.email, role: user.role },
     });
   } catch (error) {
-    console.error("Google login error:", error);
-    if (error.message?.includes("expired")) {
+    console.error("Firebase login error:", error);
+    if (error.code === "auth/id-token-expired" || error.message?.includes("expired")) {
       return res.status(401).json({ message: "Token expired. Please try again." });
     }
-    res.status(500).json({ message: "Google login failed.", error: error.message });
+    res.status(500).json({ message: "Authentication failed.", error: error.message });
   }
 };
