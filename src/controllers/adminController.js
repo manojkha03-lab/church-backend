@@ -209,3 +209,17 @@ exports.getActivityLogs = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch logs", error: err.message });
   }
 };
+
+// ─────────────────────────────────────────────
+// GET /api/admin/pending-users
+// ─────────────────────────────────────────────
+exports.getPendingUsers = async (req, res) => {
+  try {
+    const users = await User.find({ status: "pending" })
+      .select("-password")
+      .sort({ createdAt: -1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch pending users", error: err.message });
+  }
+};

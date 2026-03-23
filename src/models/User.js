@@ -8,16 +8,20 @@ const userSchema = new mongoose.Schema({
   },
   mobile: {
     type: String,
-    required: true,
-    unique: true
+    default: null
   },
   password: {
     type: String,
-    required: true
+    default: null
   },
   email: {
     type: String,
     default: ""
+  },
+  provider: {
+    type: String,
+    enum: ["local", "google"],
+    default: "local"
   },
   isVerified: {
     type: Boolean,
@@ -49,4 +53,12 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-module.exports = mongoose.model("User", userSchema);
+// Sparse unique: only enforce uniqueness when mobile has a value (allows Google users without mobile)
+userSchema.index({ mobile: 1 }, { unique: true, sparse: true });
+
+const User = mongoose.model("User", userSchema);
+
+// Sync indexes on startup (handles migration from required→sparse unique)
+User.syncIndexes().catch(() => {});
+
+module.exports = User;

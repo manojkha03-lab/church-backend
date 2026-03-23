@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const verifyFirebaseToken = require("../utils/verifyFirebaseToken");
 
 const getJwtSecret = () => process.env.JWT_SECRET || "mysecretkey";
 
@@ -60,8 +61,9 @@ exports.registerUser = async (req, res) => {
       name,
       mobile,
       password: hashedPassword,
+      provider: "local",
       isVerified: true,
-      status: "pending", // requires admin approval
+      status: "pending",
     });
 
     await user.save();
@@ -92,6 +94,14 @@ exports.loginUser = async (req, res) => {
     const user = await User.findOne({ name });
     if (!user) {
       return res.status(400).json({ message: "User not found." });
+    }
+
+    // Google users cannot login with password
+    if (user.provider === "google") {
+      return res.status(400).json({ message: "This account uses Google Sign-In. Please use the 'Continue with Google' button." });
+    }
+    if (!user.password) {
+      return res.status(400).json({ message: "This account does not have a password set." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -136,5 +146,88 @@ exports.getMe = async (req, res) => {
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+// ================= GOOGLE LOGIN (Firebase) =================
+exports.googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ message: "Firebase ID token is required." });
+    }
+
+    const decoded = await verifyFirebaseToken(idToken);
+    const { email, name: displayName, picture } = decoded;
+
+    if (!email) {
+      return res.status(400).json({ message: "Google account must have an email address." });
+    }
+
+    // Check if Google user already exists by email
+    let user = await User.findOne({ email, provider: "google" });
+
+    if (!user) {
+      // Generate a unique name
+      let userName = displayName || email.split("@")[0];
+      const nameExists = await User.findOne({ name: userName });
+      if (nameExists) {
+        userName = `${userName}_${Date.now().toString(36).slice(-4)}`;
+      }
+
+      user = new User({
+        name: userName,
+        email,
+        provider: "google",
+        profileImage: picture || "",
+        isVerified: true,
+        status: "pending",
+      });
+      await user.save();
+
+      return res.status(201).json({
+        message: "Account created! Your account is pending admin approval.",
+        pendingApproval: true,
+        user: { id: user._id, name: user.name, email: user.email, status: user.status },
+      });
+    }
+
+    // Existing user — check approval status
+    if (user.status === "pending") {
+      return res.status(403).json({
+        message: "Your account is pending approval by an administrator.",
+        pendingApproval: true,
+      });
+    }
+    if (user.status === "rejected") {
+      return res.status(403).json({
+        message: "Your account has been rejected. Please contact the church office.",
+      });
+    }
+
+    // Approved — update profile image if missing, issue JWT
+    if (picture && !user.profileImage) {
+      user.profileImage = picture;
+      await user.save();
+    }
+    await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role, name: user.name },
+      getJwtSecret(),
+      { expiresIn: "1d" }
+    );
+
+    res.json({
+      message: "Login successful",
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+    });
+  } catch (error) {
+    console.error("Google login error:", error);
+    if (error.message?.includes("expired")) {
+      return res.status(401).json({ message: "Token expired. Please try again." });
+    }
+    res.status(500).json({ message: "Google login failed.", error: error.message });
   }
 };

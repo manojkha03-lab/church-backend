@@ -13,6 +13,7 @@ const {
   getNotifications,
   deleteNotification,
   getActivityLogs,
+  getPendingUsers,
 } = require("../controllers/adminController");
 
 // All admin routes require authentication + admin role
@@ -30,6 +31,9 @@ router.delete("/notifications/:id", deleteNotification);
 router.get("/activity-logs",      getActivityLogs);
 router.put("/approve/:id",        approveUser);
 router.put("/reject/:id",         rejectUser);
+router.get("/pending-users",      getPendingUsers);
+router.post("/approve-user/:id",  approveUser);
+router.post("/reject-user/:id",   rejectUser);
 router.put("/promote/:id",        promoteUser);
 router.put("/demote/:id",         demoteUser);
 router.delete("/delete/:id",      deleteUser);
