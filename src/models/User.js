@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema({
     default: "member"
   },
   // pending = awaiting approval, approved = can login, rejected = blocked
-  status: { type: String, enum: ["pending", "approved", "rejected"], default: "approved" },
+  status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
   phone: {
     type: String,
     default: ""
