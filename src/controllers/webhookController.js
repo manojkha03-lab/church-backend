@@ -1,7 +1,15 @@
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Donation = require("../models/Donation");
 
+// Stripe is optional — backend runs without it
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? require("stripe")(process.env.STRIPE_SECRET_KEY)
+  : null;
+
 exports.handleWebhook = async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ message: "Stripe is not configured" });
+  }
+
   const sig = req.headers["stripe-signature"];
   let event;
 

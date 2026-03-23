@@ -1,8 +1,15 @@
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Donation = require("../models/Donation");
+
+// Stripe is optional — backend runs without it
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? require("stripe")(process.env.STRIPE_SECRET_KEY)
+  : null;
 
 exports.createCheckoutSession = async (req, res) => {
   try {
+    if (!stripe) {
+      return res.status(503).json({ message: "Stripe is not configured" });
+    }
     const { amount } = req.body; // amount in cents
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
