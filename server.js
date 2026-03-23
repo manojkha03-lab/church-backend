@@ -25,7 +25,7 @@ const Sermon = require("./src/models/Sermon");
 
 const app = express();
 
-// connect DB
+// connect DB (non-blocking — server stays alive if it fails)
 connectDB();
 logger.info("Server initialization started");
 
