@@ -18,6 +18,7 @@ const baptismRoutes = require("./src/routes/baptismRoutes");
 const marriageRoutes = require("./src/routes/marriageRoutes");
 const sacramentRoutes = require("./src/routes/sacramentRoutes");
 const adminRoutes     = require("./src/routes/adminRoutes");
+const memberRoutes    = require("./src/routes/memberRoutes");
 
 const Event = require("./src/models/Event");
 const Sermon = require("./src/models/Sermon");
@@ -79,6 +80,7 @@ app.use("/api/baptisms", baptismRoutes);
 app.use("/api/marriages", marriageRoutes);
 app.use("/api/sacraments", sacramentRoutes);
 app.use("/api/admin",      adminRoutes);
+app.use("/api/member",     memberRoutes);
 
 // public APIs (no auth required)
 app.get("/api/public/events", async (req, res) => {

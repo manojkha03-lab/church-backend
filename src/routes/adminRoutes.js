@@ -20,6 +20,10 @@ router.use(protect, adminOnly);
 
 router.get("/users",              getUsers);
 router.get("/stats",              getStats);
+
+// Aliases matching standard API naming
+router.get("/dashboard",          getStats);
+router.get("/members",            getUsers);
 router.get("/all-data",           getAllData);
 router.get("/notifications",      getNotifications);
 router.delete("/notifications/:id", deleteNotification);
@@ -29,5 +33,9 @@ router.put("/reject/:id",         rejectUser);
 router.put("/promote/:id",        promoteUser);
 router.put("/demote/:id",         demoteUser);
 router.delete("/delete/:id",      deleteUser);
+
+// Admin event creation shortcut
+const { createEvent } = require("../controllers/eventController");
+router.post("/create-event",      createEvent);
 
 module.exports = router;
