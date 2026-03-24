@@ -19,10 +19,9 @@ router.post("/register", registerUser);
 // ================= LOGIN =================
 router.post("/login", loginUser);
 
-// ================= GOOGLE LOGIN =================
+// ================= GOOGLE / FIREBASE LOGIN (optional) =================
+router.post("/google", firebaseLogin);
 router.post("/google-login", firebaseLogin);
-
-// ================= FIREBASE LOGIN (unified: Google / Email / Phone) =================
 router.post("/firebase-login", firebaseLogin);
 
 // ================= ME =================

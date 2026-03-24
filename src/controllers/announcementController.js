@@ -36,7 +36,12 @@ exports.updateAnnouncement = async (req, res) => {
     const announcement = await Announcement.findById(req.params.id);
     if (!announcement) return res.status(404).json({ message: "Announcement not found" });
 
-    Object.assign(announcement, req.body);
+    const { title, content, startDate, endDate, pinned } = req.body;
+    if (title !== undefined) announcement.title = title;
+    if (content !== undefined) announcement.content = content;
+    if (startDate !== undefined) announcement.startDate = startDate;
+    if (endDate !== undefined) announcement.endDate = endDate;
+    if (pinned !== undefined) announcement.pinned = pinned;
     await announcement.save();
     res.json({ message: "Announcement updated", announcement });
   } catch (error) {

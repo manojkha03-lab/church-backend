@@ -36,7 +36,12 @@ exports.updateSermon = async (req, res) => {
     const sermon = await Sermon.findById(req.params.id);
     if (!sermon) return res.status(404).json({ message: "Sermon not found" });
 
-    Object.assign(sermon, req.body);
+    const { title, speaker, date, videoUrl, notes } = req.body;
+    if (title !== undefined) sermon.title = title;
+    if (speaker !== undefined) sermon.speaker = speaker;
+    if (date !== undefined) sermon.date = date;
+    if (videoUrl !== undefined) sermon.videoUrl = videoUrl;
+    if (notes !== undefined) sermon.notes = notes;
     await sermon.save();
     res.json({ message: "Sermon updated", sermon });
   } catch (error) {

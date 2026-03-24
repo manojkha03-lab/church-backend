@@ -1,6 +1,12 @@
 const jwt = require("jsonwebtoken");
 
-const getJwtSecret = () => process.env.JWT_SECRET || "mysecretkey";
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not set');
+  }
+  return secret;
+};
 
 const requireRole = (role) => (req, res, next) => {
   if (!req.user || req.user.role !== role) {

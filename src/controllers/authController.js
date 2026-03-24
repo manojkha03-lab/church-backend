@@ -3,7 +3,13 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const verifyFirebaseToken = require("../utils/verifyFirebaseToken");
 
-const getJwtSecret = () => process.env.JWT_SECRET || "mysecretkey";
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not set');
+  }
+  return secret;
+};
 
 // ================= CHECK AVAILABILITY =================
 // Quick pre-check so the frontend can validate before Firebase OTP flow
@@ -69,11 +75,15 @@ exports.registerUser = async (req, res) => {
     await user.save();
 
     res.status(201).json({
+      success: true,
       message: "Registration successful! Your account is pending admin approval.",
       user: {
         id: user._id,
         name: user.name,
+        email: user.email || "",
         mobile: user.mobile,
+        role: user.role,
+        isApproved: false,
         status: user.status,
       },
     });
@@ -127,12 +137,101 @@ exports.loginUser = async (req, res) => {
     );
 
     res.json({
+      success: true,
       message: "Login successful",
       token,
-      user: { id: user._id, name: user.name, mobile: user.mobile, role: user.role },
+      user: { id: user._id, name: user.name, email: user.email || "", mobile: user.mobile || "", role: user.role, isApproved: user.status === "approved", status: user.status },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// ================= ME =================
+// ================= FIREBASE LOGIN (Google / Phone — optional) =================
+exports.firebaseLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ message: "Firebase ID token is required." });
+    }
+
+    const decoded = await verifyFirebaseToken(idToken);
+    const { uid, email, name: displayName, phone_number, picture, firebase } = decoded;
+    const signInProvider = firebase?.sign_in_provider || "unknown";
+
+    const providerMap = { "google.com": "google", "phone": "phone", "password": "email" };
+    const provider = providerMap[signInProvider] || "email";
+
+    // Try to find existing user by Firebase UID, then email, then phone
+    let user = await User.findOne({ firebaseUid: uid });
+    if (!user && email) user = await User.findOne({ email });
+    if (!user && phone_number) {
+      const mobile = phone_number.replace(/^\+91/, "");
+      user = await User.findOne({ mobile });
+    }
+
+    if (!user) {
+      let userName = displayName || (email ? email.split("@")[0] : `User_${uid.slice(0, 6)}`);
+      const nameExists = await User.findOne({ name: userName });
+      if (nameExists) userName = `${userName}_${Date.now().toString(36).slice(-4)}`;
+
+      user = new User({
+        name: userName,
+        email: email || "",
+        mobile: phone_number ? phone_number.replace(/^\+91/, "") : null,
+        firebaseUid: uid,
+        provider,
+        profileImage: picture || "",
+        isVerified: true,
+        status: "pending",
+      });
+      await user.save();
+
+      return res.status(201).json({
+        message: "Account created! Pending admin approval.",
+        pendingApproval: true,
+        user: { id: user._id, name: user.name, email: user.email, status: user.status },
+      });
+    }
+
+    if (!user.firebaseUid) {
+      user.firebaseUid = uid;
+      if (picture && !user.profileImage) user.profileImage = picture;
+      if (email && !user.email) user.email = email;
+      await user.save();
+    }
+
+    if (user.status === "pending") {
+      return res.status(403).json({ message: "Your account is pending admin approval.", pendingApproval: true });
+    }
+    if (user.status === "rejected") {
+      return res.status(403).json({ message: "Your account has been rejected. Contact the church office." });
+    }
+
+    if (picture && !user.profileImage) {
+      user.profileImage = picture;
+      await user.save();
+    }
+    await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role, name: user.name },
+      getJwtSecret(),
+      { expiresIn: "1d" }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: { id: user._id, name: user.name, email: user.email || "", mobile: user.mobile || "", role: user.role, isApproved: user.status === "approved", status: user.status },
+    });
+  } catch (error) {
+    console.error("Firebase login error:", error);
+    if (error.code === "auth/id-token-expired" || error.message?.includes("expired")) {
+      return res.status(401).json({ message: "Token expired. Please try again." });
+    }
+    res.status(500).json({ message: "Authentication failed.", error: error.message });
   }
 };
 
@@ -149,105 +248,3 @@ exports.getMe = async (req, res) => {
   }
 };
 
-// ================= FIREBASE LOGIN (Google / Email / Phone — unified) =================
-exports.firebaseLogin = async (req, res) => {
-  try {
-    const { idToken } = req.body;
-    if (!idToken) {
-      return res.status(400).json({ message: "Firebase ID token is required." });
-    }
-
-    const decoded = await verifyFirebaseToken(idToken);
-    const { uid, email, name: displayName, phone_number, picture, firebase } = decoded;
-    const signInProvider = firebase?.sign_in_provider || "unknown";
-
-    // Determine provider tag
-    const providerMap = { "google.com": "google", "phone": "phone", "password": "email" };
-    const provider = providerMap[signInProvider] || "email";
-
-    // Try to find existing user by Firebase UID first
-    let user = await User.findOne({ firebaseUid: uid });
-
-    // Fallback: find by email or phone
-    if (!user && email) {
-      user = await User.findOne({ email });
-    }
-    if (!user && phone_number) {
-      const mobile = phone_number.replace(/^\+91/, "");
-      user = await User.findOne({ mobile });
-    }
-
-    if (!user) {
-      // Create new user
-      let userName = displayName || (email ? email.split("@")[0] : `User_${uid.slice(0, 6)}`);
-      const nameExists = await User.findOne({ name: userName });
-      if (nameExists) {
-        userName = `${userName}_${Date.now().toString(36).slice(-4)}`;
-      }
-
-      user = new User({
-        name: userName,
-        email: email || "",
-        mobile: phone_number ? phone_number.replace(/^\+91/, "") : null,
-        firebaseUid: uid,
-        provider,
-        profileImage: picture || "",
-        isVerified: true,
-        status: "pending",
-      });
-      await user.save();
-
-      return res.status(201).json({
-        message: "Account created! Your account is pending admin approval.",
-        pendingApproval: true,
-        user: { id: user._id, name: user.name, email: user.email, status: user.status },
-      });
-    }
-
-    // Link Firebase UID if not already linked
-    if (!user.firebaseUid) {
-      user.firebaseUid = uid;
-      if (picture && !user.profileImage) user.profileImage = picture;
-      if (email && !user.email) user.email = email;
-      await user.save();
-    }
-
-    // Check approval status
-    if (user.status === "pending") {
-      return res.status(403).json({
-        message: "Your account is pending approval by an administrator.",
-        pendingApproval: true,
-      });
-    }
-    if (user.status === "rejected") {
-      return res.status(403).json({
-        message: "Your account has been rejected. Please contact the church office.",
-      });
-    }
-
-    // Approved — update profile image if missing, issue JWT
-    if (picture && !user.profileImage) {
-      user.profileImage = picture;
-      await user.save();
-    }
-    await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
-
-    const token = jwt.sign(
-      { id: user._id, role: user.role, name: user.name },
-      getJwtSecret(),
-      { expiresIn: "1d" }
-    );
-
-    res.json({
-      message: "Login successful",
-      token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
-    });
-  } catch (error) {
-    console.error("Firebase login error:", error);
-    if (error.code === "auth/id-token-expired" || error.message?.includes("expired")) {
-      return res.status(401).json({ message: "Token expired. Please try again." });
-    }
-    res.status(500).json({ message: "Authentication failed.", error: error.message });
-  }
-};

@@ -31,10 +31,10 @@ exports.errorHandler = (err, req, res, next) => {
   });
 
   res.status(status).json({
-    error: message,
+    error: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : message,
     status,
     path: req.path,
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
 

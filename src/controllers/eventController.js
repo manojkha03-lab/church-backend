@@ -41,7 +41,14 @@ exports.updateEvent = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    Object.assign(event, req.body);
+    const { title, description, location, startDate, endDate, capacity, image } = req.body;
+    if (title !== undefined) event.title = title;
+    if (description !== undefined) event.description = description;
+    if (location !== undefined) event.location = location;
+    if (startDate !== undefined) event.startDate = startDate;
+    if (endDate !== undefined) event.endDate = endDate;
+    if (capacity !== undefined) event.capacity = capacity;
+    if (image !== undefined) event.image = image;
     await event.save();
     res.json({ message: "Event updated", event });
   } catch (error) {

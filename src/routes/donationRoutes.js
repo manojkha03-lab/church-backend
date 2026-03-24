@@ -10,8 +10,8 @@ const {
 	getUserDonations,
 } = require("../controllers/donationController");
 
-router.post("/create-checkout-session", protect, requireMember, createCheckoutSession);
-router.get("/mine", protect, requireMember, getMyDonations);
+router.post("/create-checkout-session", protect, createCheckoutSession);
+router.get("/mine", protect, getMyDonations);
 router.get("/", protect, requireAdmin, getDonations);
 router.post("/add", protect, requireAdmin, addDonation);
 router.get("/all", protect, requireAdmin, getAllDonations);

@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const connectDB = require("./src/config/db");
@@ -28,6 +30,18 @@ const app = express();
 // connect DB (non-blocking — server stays alive if it fails)
 connectDB();
 logger.info("Server initialization started");
+
+// Security headers
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+
+// Rate limiting for auth routes (prevent brute force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // max 30 login/register attempts per 15 min
+  message: { message: "Too many attempts, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // webhook route BEFORE JSON middleware (needs raw body)
 app.use("/api/webhooks", webhookRoutes);
@@ -64,12 +78,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   optionsSuccessStatus: 204,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.use(logger.requestLog);
 
 // routes
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/sermons", sermonRoutes);
 app.use("/api/announcements", announcementRoutes);

@@ -26,8 +26,8 @@ exports.createCheckoutSession = async (req, res) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.protocol}://${req.get("host")}/success`,
-      cancel_url: `${req.protocol}://${req.get("host")}/cancel`,
+      success_url: `${process.env.FRONTEND_URL}/donations?status=success`,
+      cancel_url: `${process.env.FRONTEND_URL}/donations?status=cancel`,
       metadata: {
         userId: req.user.id,
       },
