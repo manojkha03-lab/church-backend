@@ -5,7 +5,7 @@ const donationSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   currency: { type: String, default: "usd" },
   method:          { type: String, enum: ["stripe", "cash", "check", "upi", "bank"], default: "cash" },
-  status:          { type: String, enum: ["pending", "completed", "failed"], default: "completed" },
+  status:          { type: String, enum: ["pending", "completed", "failed"], default: "pending" },
   note:            { type: String, default: "" },
   stripeSessionId: { type: String },
   createdAt: { type: Date, default: Date.now },

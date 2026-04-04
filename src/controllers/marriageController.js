@@ -35,7 +35,8 @@ exports.updateMarriage = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    Object.assign(marriage, req.body);
+    const allowed = ['brideName', 'groomName', 'brideDateOfBirth', 'groomDateOfBirth', 'weddingDate', 'witnesses', 'priest', 'location', 'marriageLicense', 'notes'];
+    allowed.forEach(key => { if (req.body[key] !== undefined) marriage[key] = req.body[key]; });
     marriage.updatedAt = Date.now();
     await marriage.save();
     res.json({ message: "Marriage record updated", marriage });

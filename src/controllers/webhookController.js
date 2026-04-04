@@ -34,10 +34,11 @@ exports.handleWebhook = async (req, res) => {
         await donation.save();
         console.log(`Donation ${donation._id} marked as completed`);
       }
-    } else if (event.type === "charge.failed") {
-      const charge = event.data.object;
+    } else if (event.type === "checkout.session.expired" || event.type === "charge.failed") {
+      const obj = event.data.object;
+      const sessionId = obj.id || obj.payment_intent;
       const donation = await Donation.findOne({
-        stripeSessionId: charge.payment_intent,
+        stripeSessionId: sessionId,
       });
 
       if (donation) {

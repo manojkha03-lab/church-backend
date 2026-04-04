@@ -8,11 +8,9 @@ const userSchema = new mongoose.Schema({
   },
   mobile: {
     type: String,
-    default: null
   },
   password: {
     type: String,
-    default: null
   },
   email: {
     type: String,
@@ -22,10 +20,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ["local", "google", "email", "phone"],
     default: "local"
-  },
-  firebaseUid: {
-    type: String,
-    default: null
   },
   isVerified: {
     type: Boolean,
@@ -59,11 +53,7 @@ const userSchema = new mongoose.Schema({
 
 // Sparse unique: only enforce uniqueness when mobile has a value (allows Google users without mobile)
 userSchema.index({ mobile: 1 }, { unique: true, sparse: true });
-userSchema.index({ firebaseUid: 1 }, { unique: true, sparse: true });
 
 const User = mongoose.model("User", userSchema);
-
-// Sync indexes on startup (handles migration from required→sparse unique)
-User.syncIndexes().catch(() => {});
 
 module.exports = User;

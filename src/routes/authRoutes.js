@@ -1,30 +1,19 @@
 const express = require("express");
 const router = express.Router();
-
-// import controller functions
-const { checkAvailability, registerUser, loginUser, firebaseLogin, getMe } = require("../controllers/authController");
 const { protect } = require("../middleware/authMiddleware");
+const {
+  registerUser,
+  loginUser,
+  getMe,
+  checkAvailability,
+} = require("../controllers/authController");
 
-// ================= TEST =================
-router.get("/test", (req, res) => {
-  res.send("Auth working ✅");
-});
-
-// ================= CHECK AVAILABILITY =================
-router.post("/check-availability", checkAvailability);
-
-// ================= REGISTER =================
 router.post("/register", registerUser);
-
-// ================= LOGIN =================
 router.post("/login", loginUser);
-
-// ================= GOOGLE / FIREBASE LOGIN (optional) =================
-router.post("/google", firebaseLogin);
-router.post("/google-login", firebaseLogin);
-router.post("/firebase-login", firebaseLogin);
-
-// ================= ME =================
+router.post("/firebase-login", (_req, res) => {
+  res.status(410).json({ message: "Firebase login is disabled. Use password login." });
+});
+router.post("/check-availability", checkAvailability);
 router.get("/me", protect, getMe);
 
 module.exports = router;

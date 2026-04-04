@@ -35,7 +35,8 @@ exports.updateSacrament = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    Object.assign(sacrament, req.body);
+    const allowed = ['personName', 'sacramentType', 'dateOfBirth', 'sacramentDate', 'sponsor', 'priest', 'location', 'notes'];
+    allowed.forEach(key => { if (req.body[key] !== undefined) sacrament[key] = req.body[key]; });
     sacrament.updatedAt = Date.now();
     await sacrament.save();
     res.json({ message: "Sacrament record updated", sacrament });

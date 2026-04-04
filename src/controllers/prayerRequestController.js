@@ -36,7 +36,8 @@ exports.updatePrayerRequest = async (req, res) => {
     if (request.user.toString() !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({ message: "Not authorized" });
     }
-    Object.assign(request, req.body);
+    const allowed = ['title', 'description', 'isAnonymous'];
+    allowed.forEach(key => { if (req.body[key] !== undefined) request[key] = req.body[key]; });
     request.updatedAt = Date.now();
     await request.save();
     res.json({ message: "Prayer request updated", request });

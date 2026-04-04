@@ -35,7 +35,8 @@ exports.updateBaptism = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    Object.assign(baptism, req.body);
+    const allowed = ['personName', 'dateOfBirth', 'baptismDate', 'parents', 'godparents', 'priest', 'location', 'notes'];
+    allowed.forEach(key => { if (req.body[key] !== undefined) baptism[key] = req.body[key]; });
     baptism.updatedAt = Date.now();
     await baptism.save();
     res.json({ message: "Baptism record updated", baptism });

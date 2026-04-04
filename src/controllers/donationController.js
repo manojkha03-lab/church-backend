@@ -37,6 +37,8 @@ exports.createCheckoutSession = async (req, res) => {
     const donation = new Donation({
       user: req.user.id,
       amount: amount / 100, // convert cents to dollars
+      method: "stripe",
+      status: "pending",
       stripeSessionId: session.id,
     });
     await donation.save();
